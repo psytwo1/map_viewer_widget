@@ -1,44 +1,39 @@
 library map_viewer_widget;
 
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_compass/flutter_compass.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:geolocator_platform_interface/geolocator_platform_interface.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:map_viewer_widget/map_options_ext.dart';
 
 import 'icon_with_background.dart';
 import 'navigation_state.dart';
 
-class MapViewerWidget extends StatefulWidget {
-  const MapViewerWidget({
+final counter = StateProvider((ref) => 0);
+final centerOnLocationUpdate =
+    StateProvider(((ref) => CenterOnLocationUpdate.always));
+final turnOnHeadingUpdate = StateProvider(((ref) => TurnOnHeadingUpdate.never));
+
+class MapViewerWidget2 extends HookConsumerWidget {
+  final List<Widget> children;
+  final MapOptions options;
+  final bool navigationButtonVisible;
+  MapViewerWidget2({
     Key? key,
     required this.children,
     required this.options,
+    this.navigationButtonVisible = true,
   }) : super(key: key);
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final List<Widget> children;
-  final MapOptions options;
-  @override
-  State<MapViewerWidget> createState() => _MapViewerWidgetState();
-}
-
-class _MapViewerWidgetState extends State<MapViewerWidget> {
   final MapController _mapController = MapController();
   late NavigationState _navigationState;
   late CenterOnLocationUpdate _centerOnLocationUpdate;
-  late IconWithBackground _currentNavigationButton = nearMeWhite;
+  late TurnOnHeadingUpdate _turnOnHeadingUpdate;
+  // late IconWithBackground _currentNavigationButton = nearMeWhite;
   final IconWithBackground nearMeWhite = const IconWithBackground(
       bgColor: Colors.blue,
       icon: Icon(
@@ -54,26 +49,326 @@ class _MapViewerWidgetState extends State<MapViewerWidget> {
   final IconWithBackground navigationWhite = const IconWithBackground(
       bgColor: Colors.blue, icon: Icon(Icons.navigation, color: Colors.white));
   late StreamController<double> _centerCurrentLocationStreamController;
+  late StreamController<void> _turnHeadingUpLocationStreamController;
   late MapOptions? _mapOptions;
+
+  final StreamController<NavigationState> _navigationStateStreamController =
+      NavigationStateManager.streamController;
+
+  final StreamController<double> _mapRotationStreamController =
+      StreamController<double>();
+
+  double _oldMapRotation = 0;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final count = ref.watch(counter);
+
+    _centerOnLocationUpdate = ref.watch(centerOnLocationUpdate);
+    _turnOnHeadingUpdate = ref.watch(turnOnHeadingUpdate);
+
+    _centerCurrentLocationStreamController = StreamController<double>();
+    _turnHeadingUpLocationStreamController = StreamController<void>();
+    final Timer mapRotationObsever =
+        Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_oldMapRotation != _mapController.rotation) {
+        _oldMapRotation = _mapController.rotation;
+        _mapRotationStreamController.sink.add(_oldMapRotation);
+      }
+    });
+
+    _navigationStateStreamController.stream.listen(
+      (event) {
+        _setNavigationState(event, isSetStream: false);
+      },
+    );
+
+    _setNavigationState(NavigationState.northUp, isInit: true);
+
+    _mapOptions = options.copyWith(
+        onPositionChanged: options.onPositionChanged ??
+            (MapPosition position, bool hasGesture) {
+              if (hasGesture && _navigationState != NavigationState.none) {
+                // setState(() {
+                _setNavigationState(NavigationState.none);
+                // });
+              }
+            });
+    return Stack(children: [
+      FlutterMap(
+        mapController: _mapController,
+        options: _mapOptions!,
+        children: children.followedBy([
+          FutureBuilder(
+            builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
+              if (snapshot.hasData && snapshot.data!) {
+                return LocationMarkerLayerWidget(
+                    plugin: LocationMarkerPlugin(
+                      centerCurrentLocationStream:
+                          _centerCurrentLocationStreamController.stream,
+                      centerOnLocationUpdate: _centerOnLocationUpdate,
+                      turnOnHeadingUpdate: _turnOnHeadingUpdate,
+                      turnHeadingUpLocationStream:
+                          _turnHeadingUpLocationStreamController.stream,
+                    ),
+                    options: LocationMarkerLayerOptions(
+                      marker: const DefaultLocationMarker(),
+                    ));
+              } else {
+                return Container();
+              }
+            },
+            future: _isPermitted(),
+          ),
+        ]).toList(),
+      ),
+      if (navigationButtonVisible)
+        Positioned(
+          right: 20,
+          bottom: 20,
+          child: StreamBuilder(
+            builder: (BuildContext context,
+                AsyncSnapshot<NavigationState> snapshot) {
+              IconWithBackground iconBg = nearMeBlue;
+              if (snapshot.hasData) {
+                switch (snapshot.data) {
+                  case NavigationState.northUp:
+                    iconBg = nearMeWhite;
+                    break;
+                  case NavigationState.headUp:
+                    iconBg = navigationWhite;
+                    break;
+                  case NavigationState.none:
+                  default:
+                    iconBg = nearMeBlue;
+                    break;
+                }
+              }
+              return FloatingActionButton(
+                onPressed: navigationButtonAction,
+                backgroundColor: iconBg.bgColor,
+                child: iconBg.icon,
+              );
+            },
+            stream: _navigationStateStreamController.stream,
+          ),
+        ),
+      StreamBuilder(
+        builder: (BuildContext context, AsyncSnapshot<double> snapshot) {
+          if (snapshot.hasData) {
+            double roteteion = snapshot.data ?? 0 * pi / 180;
+            if (roteteion != 0) {
+              return Positioned(
+                right: 20,
+                top: 20,
+                child: FloatingActionButton(
+                  onPressed: () {
+                    _mapController.rotate(0);
+                  },
+                  backgroundColor: Colors.white,
+                  foregroundColor: const Color.fromARGB(0xff, 0x61, 0x61, 0x61),
+                  child: Transform.rotate(
+                    angle: roteteion,
+                    child: Column(children: const [
+                      Text("N"),
+                      Icon(
+                        Icons.navigation,
+                        color: Color.fromARGB(0xff, 0x61, 0x61, 0x61),
+                      )
+                    ]),
+                  ),
+                ),
+              );
+            } else {
+              return Container();
+            }
+          } else {
+            return Container();
+          }
+        },
+        stream: _mapRotationStreamController.stream,
+      ),
+    ]);
+  }
+
+  void navigationButtonAction() {
+    // setState(() {
+    if (_navigationState == NavigationState.northUp) {
+      _setNavigationState(NavigationState.headUp);
+    } else {
+      _setNavigationState(NavigationState.northUp);
+    }
+    // });
+  }
+
+  void _setNavigationState(NavigationState state,
+      {bool isInit = false, bool isSetStream = true}) {
+    _navigationState = state;
+    if (isSetStream) {
+      setNavigationStateStream();
+    }
+    switch (_navigationState) {
+      case NavigationState.northUp:
+        _centerOnLocationUpdate = CenterOnLocationUpdate.always;
+        _turnOnHeadingUpdate = TurnOnHeadingUpdate.never;
+        // _currentNavigationButton = nearMeWhite;
+        _centerCurrentLocationStreamController.add(17);
+        if (!isInit) {
+          _mapController.rotate(0);
+        }
+        break;
+
+      case NavigationState.headUp:
+        _centerOnLocationUpdate = CenterOnLocationUpdate.always;
+        _turnOnHeadingUpdate = TurnOnHeadingUpdate.always;
+        // _currentNavigationButton = navigationWhite;
+        _centerCurrentLocationStreamController.add(17);
+        _turnHeadingUpLocationStreamController.add(null);
+        break;
+
+      case NavigationState.none:
+      default:
+        _centerOnLocationUpdate = CenterOnLocationUpdate.never;
+        _turnOnHeadingUpdate = TurnOnHeadingUpdate.never;
+      // _currentNavigationButton = nearMeBlue;
+    }
+  }
+
+  void setNavigationStateStream() {
+    _navigationStateStreamController.add(_navigationState);
+  }
+
+  Future<bool> _isPermitted() async {
+    final geolocatorPlatform = GeolocatorPlatform.instance;
+    var parmission = await geolocatorPlatform.checkPermission();
+    if (parmission == LocationPermission.denied ||
+        parmission == LocationPermission.deniedForever) {
+      parmission = await geolocatorPlatform.requestPermission();
+    }
+    return parmission == LocationPermission.always ||
+        parmission == LocationPermission.whileInUse;
+  }
+}
+
+class MapViewerWidget extends StatelessWidget {
+  final List<Widget> children;
+  final MapOptions options;
+  final bool navigationButtonVisible;
+
+  const MapViewerWidget({
+    Key? key,
+    required this.children,
+    required this.options,
+    this.navigationButtonVisible = true,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return _MapViewerWidget(
+      options: options,
+      // navigationStateStream: NavigationStateManager.stream,
+      navigationButtonVisible: navigationButtonVisible,
+      children: children,
+    );
+  }
+
+  static Stream<NavigationState> getNavigationStateStream() {
+    return StreamController<NavigationState>().stream;
+  }
+}
+
+class _MapViewerWidget extends StatefulWidget {
+  final List<Widget> children;
+  final MapOptions options;
+  final bool navigationButtonVisible;
+  // final Stream<NavigationState>? navigationStateStream;
+
+  const _MapViewerWidget({
+    Key? key,
+    required this.children,
+    required this.options,
+    this.navigationButtonVisible = true,
+    // this.navigationStateStream,
+  }) : super(key: key);
+
+  // This widget is the home page of your application. It is stateful, meaning
+  // that it has a State object (defined below) that contains fields that affect
+  // how it looks.
+
+  // This class is the configuration for the state. It holds the values (in this
+  // case the title) provided by the parent (in this case the App widget) and
+  // used by the build method of the State. Fields in a Widget subclass are
+  // always marked "final".
+
+  @override
+  State<_MapViewerWidget> createState() {
+    return _MapViewerWidgetState();
+  }
+}
+
+class _MapViewerWidgetState extends State<_MapViewerWidget> {
+  _MapViewerWidgetState();
+  final MapController _mapController = MapController();
+  late NavigationState _navigationState;
+  late CenterOnLocationUpdate _centerOnLocationUpdate;
+  late TurnOnHeadingUpdate _turnOnHeadingUpdate;
+  // late IconWithBackground _currentNavigationButton = nearMeWhite;
+  final IconWithBackground nearMeWhite = const IconWithBackground(
+      bgColor: Colors.blue,
+      icon: Icon(
+        Icons.near_me,
+        color: Colors.white,
+      ));
+  final IconWithBackground nearMeBlue = const IconWithBackground(
+      bgColor: Colors.white,
+      icon: Icon(
+        Icons.near_me,
+        color: Colors.blue,
+      ));
+  final IconWithBackground navigationWhite = const IconWithBackground(
+      bgColor: Colors.blue, icon: Icon(Icons.navigation, color: Colors.white));
+  late StreamController<double> _centerCurrentLocationStreamController;
+  late StreamController<void> _turnHeadingUpLocationStreamController;
+  late MapOptions? _mapOptions;
+
+  final StreamController<NavigationState> _navigationStateStreamController =
+      NavigationStateManager.streamController;
+
+  final StreamController<double> _mapRotationStreamController =
+      StreamController<double>();
+
+  late final Timer _mapRotationObsever;
+  double _oldMapRotation = 0;
 
   @override
   void initState() {
     super.initState();
     _centerOnLocationUpdate = CenterOnLocationUpdate.always;
+    _turnOnHeadingUpdate = TurnOnHeadingUpdate.never;
     _centerCurrentLocationStreamController = StreamController<double>();
-    _setNavigationState(NavigationState.northUp, isInit: true);
-    FlutterCompass.events!.listen((data) {
-      if (_navigationState == NavigationState.headUp) {
-        _mapController.rotate(-data.heading!);
+    _turnHeadingUpLocationStreamController = StreamController<void>();
+    _mapRotationObsever = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_oldMapRotation != _mapController.rotation) {
+        _oldMapRotation = _mapController.rotation;
+        _mapRotationStreamController.sink.add(_oldMapRotation);
       }
     });
+
+    _navigationStateStreamController.stream.listen(
+      (event) {
+        _setNavigationState(event, isSetStream: false);
+      },
+    );
+
+    _setNavigationState(NavigationState.northUp, isInit: true);
+
     _mapOptions = widget.options.copyWith(
         onPositionChanged: widget.options.onPositionChanged ??
             (MapPosition position, bool hasGesture) {
-              if (hasGesture) {
-                setState(() {
-                  _setNavigationState(NavigationState.none);
-                });
+              if (hasGesture && _navigationState != NavigationState.none) {
+                // setState(() {
+                _setNavigationState(NavigationState.none);
+                // });
               }
             });
   }
@@ -99,6 +394,9 @@ class _MapViewerWidgetState extends State<MapViewerWidget> {
                       centerCurrentLocationStream:
                           _centerCurrentLocationStreamController.stream,
                       centerOnLocationUpdate: _centerOnLocationUpdate,
+                      turnOnHeadingUpdate: _turnOnHeadingUpdate,
+                      turnHeadingUpLocationStream:
+                          _turnHeadingUpLocationStreamController.stream,
                     ),
                     options: LocationMarkerLayerOptions(
                       marker: const DefaultLocationMarker(),
@@ -111,60 +409,105 @@ class _MapViewerWidgetState extends State<MapViewerWidget> {
           ),
         ]).toList(),
       ),
-      // FutureBuilder(
-      //   builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
-      //     if (snapshot.hasData && snapshot.data!) {
-      // return
-      Positioned(
-        right: 20,
-        bottom: 20,
-        child: FloatingActionButton(
-          onPressed: () async {
-            // Automatically center the location marker on the map when location updated until user interact with the map.
-            setState(() {
-              if (_navigationState == NavigationState.northUp) {
-                _setNavigationState(NavigationState.headUp);
-              } else {
-                _setNavigationState(NavigationState.northUp);
+      if (widget.navigationButtonVisible)
+        Positioned(
+          right: 20,
+          bottom: 20,
+          child: StreamBuilder(
+            builder: (BuildContext context,
+                AsyncSnapshot<NavigationState> snapshot) {
+              IconWithBackground iconBg = nearMeBlue;
+              if (snapshot.hasData) {
+                switch (snapshot.data) {
+                  case NavigationState.northUp:
+                    iconBg = nearMeWhite;
+                    break;
+                  case NavigationState.headUp:
+                    iconBg = navigationWhite;
+                    break;
+                  case NavigationState.none:
+                  default:
+                    iconBg = nearMeBlue;
+                    break;
+                }
               }
-            });
-            // Center the location marker on the map and zoom the map to level 18.
-            // _centerCurrentLocationStreamController.add(17);
-          },
-          backgroundColor: _currentNavigationButton.bgColor,
-          child: _currentNavigationButton.icon,
+              return FloatingActionButton(
+                onPressed: navigationButtonAction,
+                backgroundColor: iconBg.bgColor,
+                child: iconBg.icon,
+              );
+            },
+            stream: _navigationStateStreamController.stream,
+          ),
         ),
-      )
-      // ;
-      //     } else {
-      //       return Container();
-      //     }
-      //   },
-      //   future: _isPermitted(),
-      // )
+      StreamBuilder(
+        builder: (BuildContext context, AsyncSnapshot<double> snapshot) {
+          if (snapshot.hasData) {
+            double roteteion = snapshot.data ?? 0 * pi / 180;
+            if (roteteion != 0) {
+              return Positioned(
+                right: 20,
+                top: 20,
+                child: FloatingActionButton(
+                  onPressed: () {
+                    _mapController.rotate(0);
+                  },
+                  backgroundColor: Colors.white,
+                  foregroundColor: const Color.fromARGB(0xff, 0x61, 0x61, 0x61),
+                  child: Transform.rotate(
+                    angle: roteteion,
+                    child: Column(children: const [
+                      Text("N"),
+                      Icon(
+                        Icons.navigation,
+                        color: Color.fromARGB(0xff, 0x61, 0x61, 0x61),
+                      )
+                    ]),
+                  ),
+                ),
+              );
+            } else {
+              return Container();
+            }
+          } else {
+            return Container();
+          }
+        },
+        stream: _mapRotationStreamController.stream,
+      ),
     ]);
   }
 
-  void _setNavigationState(NavigationState state, {bool isInit = false}) {
+  void _setNavigationState(NavigationState state,
+      {bool isInit = false, bool isSetStream = true}) {
     _navigationState = state;
+    if (isSetStream) {
+      setNavigationStateStream();
+    }
     switch (_navigationState) {
       case NavigationState.northUp:
         _centerOnLocationUpdate = CenterOnLocationUpdate.always;
-        _currentNavigationButton = nearMeWhite;
+        _turnOnHeadingUpdate = TurnOnHeadingUpdate.never;
+        // _currentNavigationButton = nearMeWhite;
         _centerCurrentLocationStreamController.add(17);
         if (!isInit) {
           _mapController.rotate(0);
         }
-
         break;
+
       case NavigationState.headUp:
         _centerOnLocationUpdate = CenterOnLocationUpdate.always;
-        _currentNavigationButton = navigationWhite;
+        _turnOnHeadingUpdate = TurnOnHeadingUpdate.always;
+        // _currentNavigationButton = navigationWhite;
         _centerCurrentLocationStreamController.add(17);
+        _turnHeadingUpLocationStreamController.add(null);
         break;
+
+      case NavigationState.none:
       default:
         _centerOnLocationUpdate = CenterOnLocationUpdate.never;
-        _currentNavigationButton = nearMeBlue;
+        _turnOnHeadingUpdate = TurnOnHeadingUpdate.never;
+      // _currentNavigationButton = nearMeBlue;
     }
   }
 
@@ -177,5 +520,25 @@ class _MapViewerWidgetState extends State<MapViewerWidget> {
     }
     return parmission == LocationPermission.always ||
         parmission == LocationPermission.whileInUse;
+  }
+
+  void navigationButtonAction() {
+    // setState(() {
+    if (_navigationState == NavigationState.northUp) {
+      _setNavigationState(NavigationState.headUp);
+    } else {
+      _setNavigationState(NavigationState.northUp);
+    }
+    // });
+  }
+
+  void setNavigationStateStream() {
+    _navigationStateStreamController.add(_navigationState);
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    _mapRotationObsever.cancel();
   }
 }
