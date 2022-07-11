@@ -7,18 +7,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:geolocator_platform_interface/geolocator_platform_interface.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:map_viewer_widget/map_options_ext.dart';
+import 'package:map_viewer_widget/navigation_state_stream_controller.dart';
+import 'package:stream_transform/stream_transform.dart';
 
 import 'icon_with_background.dart';
 import 'navigation_state.dart';
 
-final counter = StateProvider((ref) => 0);
-final centerOnLocationUpdate =
-    StateProvider(((ref) => CenterOnLocationUpdate.always));
-final turnOnHeadingUpdate = StateProvider(((ref) => TurnOnHeadingUpdate.never));
-
-class MapViewerWidget2 extends HookConsumerWidget {
+class MapViewerWidget2 extends StatelessWidget {
   final List<Widget> children;
   final MapOptions options;
   final bool navigationButtonVisible;
@@ -31,8 +27,10 @@ class MapViewerWidget2 extends HookConsumerWidget {
 
   final MapController _mapController = MapController();
   late NavigationState _navigationState;
-  late CenterOnLocationUpdate _centerOnLocationUpdate;
-  late TurnOnHeadingUpdate _turnOnHeadingUpdate;
+  CenterOnLocationUpdate _centerOnLocationUpdate =
+      CenterOnLocationUpdate.always;
+  TurnOnHeadingUpdate _turnOnHeadingUpdate = TurnOnHeadingUpdate.never;
+
   // late IconWithBackground _currentNavigationButton = nearMeWhite;
   final IconWithBackground nearMeWhite = const IconWithBackground(
       bgColor: Colors.blue,
@@ -53,7 +51,7 @@ class MapViewerWidget2 extends HookConsumerWidget {
   late MapOptions? _mapOptions;
 
   final StreamController<NavigationState> _navigationStateStreamController =
-      NavigationStateManager.streamController;
+      NavigationStateStreamController.streamController;
 
   final StreamController<double> _mapRotationStreamController =
       StreamController<double>();
@@ -61,12 +59,7 @@ class MapViewerWidget2 extends HookConsumerWidget {
   double _oldMapRotation = 0;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final count = ref.watch(counter);
-
-    _centerOnLocationUpdate = ref.watch(centerOnLocationUpdate);
-    _turnOnHeadingUpdate = ref.watch(turnOnHeadingUpdate);
-
+  Widget build(BuildContext context) {
     _centerCurrentLocationStreamController = StreamController<double>();
     _turnHeadingUpLocationStreamController = StreamController<void>();
     final Timer mapRotationObsever =
@@ -247,6 +240,14 @@ class MapViewerWidget2 extends HookConsumerWidget {
     }
     return parmission == LocationPermission.always ||
         parmission == LocationPermission.whileInUse;
+  }
+
+  Stream<List> combineLatest(Iterable<Stream> streams) {
+    final Stream<Object> first = streams.first.cast<Object>();
+    final List<Stream<Object>> others = [
+      ...streams.skip(1).cast<Stream<Object>>()
+    ];
+    return first.combineLatestAll(others);
   }
 }
 
