@@ -6,6 +6,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:map_viewer_widget/map_viewer_widget.dart';
 import 'package:map_viewer_widget/navigation_state.dart';
+import 'package:map_viewer_widget/navigation_state_stream_controller.dart';
 import 'package:vector_map_tiles/vector_map_tiles.dart';
 import 'package:vector_tile_renderer/vector_tile_renderer.dart';
 
@@ -45,7 +46,7 @@ class MyHomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final StreamController<NavigationState> sc =
-        NavigationStateManager.streamController;
+        NavigationStateStreamController.streamController;
     return Scaffold(
       appBar: AppBar(
         // Here we take the value from the MyHomePage object that was created by
@@ -94,7 +95,7 @@ class MyHomePage extends StatelessWidget {
                   }
                   return Text(text);
                 },
-                stream: NavigationStateManager.stream,
+                stream: NavigationStateStreamController.stream,
               ),
               onPressed: () {
                 sc.sink.add(NavigationState.northUp);

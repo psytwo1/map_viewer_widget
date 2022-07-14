@@ -1,25 +1,27 @@
 import 'dart:async';
 
+import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
+
 import 'map_viewer_widget_stream_factory.dart';
-import 'navigation_state.dart';
 
-class NavigationStateStreamController
-    extends MapViewerWidgetStreamFactory<NavigationState> {
-  static final _instance = NavigationStateStreamController._();
+class CenterOnLocationUpdateStreamController
+    extends MapViewerWidgetStreamFactory<CenterOnLocationUpdate> {
+  static final _instance = CenterOnLocationUpdateStreamController._();
 
-  factory NavigationStateStreamController() {
+  factory CenterOnLocationUpdateStreamController() {
     return _instance;
   }
 
-  NavigationStateStreamController._();
+  CenterOnLocationUpdateStreamController._();
 
   @override
-  StreamController<NavigationState> createContoller() =>
-      StreamController<NavigationState>.broadcast();
+  StreamController<CenterOnLocationUpdate> createContoller() =>
+      StreamController<CenterOnLocationUpdate>.broadcast();
 
-  static StreamController<NavigationState> get streamController => _instance.sc;
+  static StreamController<CenterOnLocationUpdate> get streamController =>
+      _instance.sc;
 
-  static Stream<NavigationState> get stream => _instance.s;
+  static Stream<CenterOnLocationUpdate> get stream => _instance.s;
 
   // static Stream<NavigationState> get navigationStateStream {
   //   return _streamController.stream;

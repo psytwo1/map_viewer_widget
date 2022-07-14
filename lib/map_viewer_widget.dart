@@ -7,8 +7,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:geolocator_platform_interface/geolocator_platform_interface.dart';
+import 'package:map_viewer_widget/center_on_location_update_stream_controller.dart';
 import 'package:map_viewer_widget/map_options_ext.dart';
 import 'package:map_viewer_widget/navigation_state_stream_controller.dart';
+import 'package:map_viewer_widget/turn_on_heading_update_stream_controller.dart';
 import 'package:stream_transform/stream_transform.dart';
 
 import 'icon_with_background.dart';
@@ -27,9 +29,9 @@ class MapViewerWidget2 extends StatelessWidget {
 
   final MapController _mapController = MapController();
   late NavigationState _navigationState;
-  CenterOnLocationUpdate _centerOnLocationUpdate =
-      CenterOnLocationUpdate.always;
-  TurnOnHeadingUpdate _turnOnHeadingUpdate = TurnOnHeadingUpdate.never;
+  // final CenterOnLocationUpdate _centerOnLocationUpdate =
+  //     CenterOnLocationUpdate.always;
+  // TurnOnHeadingUpdate _turnOnHeadingUpdate = TurnOnHeadingUpdate.never;
 
   // late IconWithBackground _currentNavigationButton = nearMeWhite;
   final IconWithBackground nearMeWhite = const IconWithBackground(
@@ -46,28 +48,36 @@ class MapViewerWidget2 extends StatelessWidget {
       ));
   final IconWithBackground navigationWhite = const IconWithBackground(
       bgColor: Colors.blue, icon: Icon(Icons.navigation, color: Colors.white));
-  late StreamController<double> _centerCurrentLocationStreamController;
-  late StreamController<void> _turnHeadingUpLocationStreamController;
+  final StreamController<double> _centerCurrentLocationStreamController =
+      StreamController<double>();
+  final StreamController<void> _turnHeadingUpLocationStreamController =
+      StreamController<void>();
+
   late MapOptions? _mapOptions;
 
   final StreamController<NavigationState> _navigationStateStreamController =
       NavigationStateStreamController.streamController;
 
-  final StreamController<double> _mapRotationStreamController =
-      StreamController<double>();
+  // final StreamController<double> _mapRotationStreamController =
+  //     StreamController<double>();
 
   double _oldMapRotation = 0;
 
   @override
   Widget build(BuildContext context) {
-    _centerCurrentLocationStreamController = StreamController<double>();
-    _turnHeadingUpLocationStreamController = StreamController<void>();
-    final Timer mapRotationObsever =
-        Timer.periodic(const Duration(seconds: 1), (timer) {
+    // Timer.periodic(const Duration(seconds: 1), (timer) {
+    //   if (_oldMapRotation != _mapController.rotation) {
+    //     _oldMapRotation = _mapController.rotation;
+    //     _mapRotationStreamController.sink.add(_oldMapRotation);
+    //   }
+    // });
+
+    final mapRotateion =
+        Stream<double>.periodic(const Duration(seconds: 1), (_) {
       if (_oldMapRotation != _mapController.rotation) {
         _oldMapRotation = _mapController.rotation;
-        _mapRotationStreamController.sink.add(_oldMapRotation);
       }
+      return _oldMapRotation;
     });
 
     _navigationStateStreamController.stream.listen(
@@ -87,6 +97,7 @@ class MapViewerWidget2 extends StatelessWidget {
                 // });
               }
             });
+
     return Stack(children: [
       FlutterMap(
         mapController: _mapController,
@@ -95,18 +106,36 @@ class MapViewerWidget2 extends StatelessWidget {
           FutureBuilder(
             builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
               if (snapshot.hasData && snapshot.data!) {
-                return LocationMarkerLayerWidget(
-                    plugin: LocationMarkerPlugin(
-                      centerCurrentLocationStream:
-                          _centerCurrentLocationStreamController.stream,
-                      centerOnLocationUpdate: _centerOnLocationUpdate,
-                      turnOnHeadingUpdate: _turnOnHeadingUpdate,
-                      turnHeadingUpLocationStream:
-                          _turnHeadingUpLocationStreamController.stream,
-                    ),
-                    options: LocationMarkerLayerOptions(
-                      marker: const DefaultLocationMarker(),
-                    ));
+                return StreamBuilder(
+                  builder: (BuildContext context,
+                      AsyncSnapshot<List<Object>> snapshot) {
+                    var centerOnLocationUpdate = CenterOnLocationUpdate.always;
+                    var turnOnHeadingUpdate = TurnOnHeadingUpdate.never;
+                    if (snapshot.hasData) {
+                      centerOnLocationUpdate =
+                          snapshot.data![0] as CenterOnLocationUpdate;
+                      turnOnHeadingUpdate =
+                          snapshot.data![1] as TurnOnHeadingUpdate;
+                    }
+                    return LocationMarkerLayerWidget(
+                      plugin: LocationMarkerPlugin(
+                        centerCurrentLocationStream:
+                            _centerCurrentLocationStreamController.stream,
+                        centerOnLocationUpdate: centerOnLocationUpdate,
+                        turnOnHeadingUpdate: turnOnHeadingUpdate,
+                        turnHeadingUpLocationStream:
+                            _turnHeadingUpLocationStreamController.stream,
+                      ),
+                      options: LocationMarkerLayerOptions(
+                        marker: const DefaultLocationMarker(),
+                      ),
+                    );
+                  },
+                  stream: combineLatest([
+                    CenterOnLocationUpdateStreamController.stream,
+                    TurnOnHeadingUpdateStreamController.stream
+                  ]),
+                );
               } else {
                 return Container();
               }
@@ -149,7 +178,7 @@ class MapViewerWidget2 extends StatelessWidget {
       StreamBuilder(
         builder: (BuildContext context, AsyncSnapshot<double> snapshot) {
           if (snapshot.hasData) {
-            double roteteion = snapshot.data ?? 0 * pi / 180;
+            double roteteion = (snapshot.data ?? 0) * pi / 180;
             if (roteteion != 0) {
               return Positioned(
                 right: 20,
@@ -179,7 +208,7 @@ class MapViewerWidget2 extends StatelessWidget {
             return Container();
           }
         },
-        stream: _mapRotationStreamController.stream,
+        stream: mapRotateion,
       ),
     ]);
   }
@@ -202,8 +231,13 @@ class MapViewerWidget2 extends StatelessWidget {
     }
     switch (_navigationState) {
       case NavigationState.northUp:
-        _centerOnLocationUpdate = CenterOnLocationUpdate.always;
-        _turnOnHeadingUpdate = TurnOnHeadingUpdate.never;
+        // _centerOnLocationUpdate = CenterOnLocationUpdate.always;
+        CenterOnLocationUpdateStreamController.streamController.sink
+            .add(CenterOnLocationUpdate.always);
+
+        // _turnOnHeadingUpdate = TurnOnHeadingUpdate.never;
+        TurnOnHeadingUpdateStreamController.streamController.sink
+            .add(TurnOnHeadingUpdate.never);
         // _currentNavigationButton = nearMeWhite;
         _centerCurrentLocationStreamController.add(17);
         if (!isInit) {
@@ -212,8 +246,12 @@ class MapViewerWidget2 extends StatelessWidget {
         break;
 
       case NavigationState.headUp:
-        _centerOnLocationUpdate = CenterOnLocationUpdate.always;
-        _turnOnHeadingUpdate = TurnOnHeadingUpdate.always;
+        // _centerOnLocationUpdate = CenterOnLocationUpdate.always;
+        CenterOnLocationUpdateStreamController.streamController.sink
+            .add(CenterOnLocationUpdate.always);
+        // _turnOnHeadingUpdate = TurnOnHeadingUpdate.always;
+        TurnOnHeadingUpdateStreamController.streamController.sink
+            .add(TurnOnHeadingUpdate.always);
         // _currentNavigationButton = navigationWhite;
         _centerCurrentLocationStreamController.add(17);
         _turnHeadingUpLocationStreamController.add(null);
@@ -221,8 +259,11 @@ class MapViewerWidget2 extends StatelessWidget {
 
       case NavigationState.none:
       default:
-        _centerOnLocationUpdate = CenterOnLocationUpdate.never;
-        _turnOnHeadingUpdate = TurnOnHeadingUpdate.never;
+        // _centerOnLocationUpdate = CenterOnLocationUpdate.never;
+        CenterOnLocationUpdateStreamController.streamController.sink
+            .add(CenterOnLocationUpdate.never);
+        TurnOnHeadingUpdateStreamController.streamController.sink
+            .add(TurnOnHeadingUpdate.never);
       // _currentNavigationButton = nearMeBlue;
     }
   }
@@ -242,7 +283,7 @@ class MapViewerWidget2 extends StatelessWidget {
         parmission == LocationPermission.whileInUse;
   }
 
-  Stream<List> combineLatest(Iterable<Stream> streams) {
+  Stream<List<Object>> combineLatest(Iterable<Stream> streams) {
     final Stream<Object> first = streams.first.cast<Object>();
     final List<Stream<Object>> others = [
       ...streams.skip(1).cast<Stream<Object>>()
@@ -333,7 +374,7 @@ class _MapViewerWidgetState extends State<_MapViewerWidget> {
   late MapOptions? _mapOptions;
 
   final StreamController<NavigationState> _navigationStateStreamController =
-      NavigationStateManager.streamController;
+      NavigationStateStreamController.streamController;
 
   final StreamController<double> _mapRotationStreamController =
       StreamController<double>();
