@@ -55,7 +55,7 @@ class MyHomePage extends StatelessWidget {
       ),
       body: SafeArea(
           child: Stack(children: [
-        MapViewerWidget2(
+        MapViewerWidget(
             options: MapOptions(
               center: LatLng(39.640278, 141.946572),
               zoom: 8,
