@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:map_viewer_widget/map_viewer_widget.dart';
-import 'package:map_viewer_widget/navigation_state.dart';
-import 'package:map_viewer_widget/navigation_state_stream_controller.dart';
+import 'package:map_viewer_widget/navigation_status.dart';
+import 'package:map_viewer_widget/navigation_status_stream_controller.dart';
 import 'package:vector_map_tiles/vector_map_tiles.dart';
 import 'package:vector_tile_renderer/vector_tile_renderer.dart';
 
@@ -45,8 +45,8 @@ class MyHomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final StreamController<NavigationState> sc =
-        NavigationStateStreamController.streamController;
+    final StreamController<NavigationStatus> sc =
+        NavigationStatatusStreamController.streamController;
     return Scaffold(
       appBar: AppBar(
         // Here we take the value from the MyHomePage object that was created by
@@ -58,7 +58,7 @@ class MyHomePage extends StatelessWidget {
         MapViewerWidget(
             options: MapOptions(
               center: LatLng(39.640278, 141.946572),
-              zoom: 8,
+              zoom: 14,
               maxZoom: 14,
               plugins: [VectorMapTilesPlugin()],
             ),
@@ -76,29 +76,32 @@ class MyHomePage extends StatelessWidget {
             child: FloatingActionButton(
               child: StreamBuilder(
                 builder: (BuildContext context,
-                    AsyncSnapshot<NavigationState> snapShot) {
-                  String text = "not ready";
+                    AsyncSnapshot<NavigationStatus> snapShot) {
+                  String text = "none";
+                  NavigationStatus navigationStatus = NavigationStatus.northUp;
                   if (snapShot.hasData) {
-                    switch (snapShot.data) {
-                      case NavigationState.headUp:
-                        text = "headUp";
-                        break;
-                      case NavigationState.northUp:
-                        text = "northUp";
-                        break;
-                      case NavigationState.none:
-                        text = "none";
-                        break;
-                      default:
-                        text = "not ready";
-                    }
+                    navigationStatus =
+                        snapShot.data ?? NavigationStatus.northUp;
                   }
+                  switch (navigationStatus) {
+                    case NavigationStatus.headUp:
+                      text = "headUp";
+                      break;
+                    case NavigationStatus.northUp:
+                      text = "northUp";
+                      break;
+                    case NavigationStatus.none:
+                    default:
+                      text = "none";
+                      break;
+                  }
+
                   return Text(text);
                 },
-                stream: NavigationStateStreamController.stream,
+                stream: NavigationStatatusStreamController.stream,
               ),
               onPressed: () {
-                sc.sink.add(NavigationState.northUp);
+                sc.sink.add(NavigationStatus.northUp);
               },
             ))
       ])),
