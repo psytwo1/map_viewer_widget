@@ -20,34 +20,4 @@ class NavigationStateStreamController
   static StreamController<NavigationState> get streamController => _instance.sc;
 
   static Stream<NavigationState> get stream => _instance.s;
-
-  // static Stream<NavigationState> get navigationStateStream {
-  //   return _streamController.stream;
-  // }
-
-  // static final StreamController<CenterOnLocationUpdate>
-  //     _centerOnLocationUpdateStreamController =
-  //     StreamController<CenterOnLocationUpdate>.broadcast();
-
-  // static StreamController<CenterOnLocationUpdate>
-  //     get centerOnLocationUpdateStreamController {
-  //   return _centerOnLocationUpdateStreamController;
-  // }
-
-  // static Stream<CenterOnLocationUpdate> get centerOnLocationUpdateStream {
-  //   return _centerOnLocationUpdateStreamController.stream;
-  // }
-
-  // static final StreamController<TurnOnHeadingUpdate>
-  //     _turnOnHeadingUpdateStreamController =
-  //     StreamController<TurnOnHeadingUpdate>.broadcast();
-
-  // static StreamController<TurnOnHeadingUpdate>
-  //     get turnOnHeadingUpdateStreamController {
-  //   return _turnOnHeadingUpdateStreamController;
-  // }
-
-  // static Stream<TurnOnHeadingUpdate> get turnOnHeadingUpdateStream {
-  //   return _turnOnHeadingUpdateStreamController.stream;
-  // }
 }
