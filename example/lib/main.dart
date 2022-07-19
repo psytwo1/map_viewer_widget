@@ -96,7 +96,12 @@ class MyHomePage extends StatelessWidget {
                       break;
                   }
 
-                  return Text(text);
+                  return Text(
+                    text,
+                    style: const TextStyle(
+                      fontSize: 10,
+                    ),
+                  );
                 },
                 stream: NavigationStatatusStreamController.stream,
               ),

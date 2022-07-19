@@ -68,6 +68,13 @@ class MapViewerWidget extends StatelessWidget {
       },
     );
 
+    TurnOnHeadingUpdateStreamController.stream.listen((event) {
+      if (event == TurnOnHeadingUpdate.never &&
+          navigationStatus != NavigationStatus.headUp) {
+        _mapController.rotate(0);
+      }
+    });
+
     MapOptions mapOptions = options.copyWith(
         onPositionChanged: options.onPositionChanged ??
             (MapPosition position, bool hasGesture) {

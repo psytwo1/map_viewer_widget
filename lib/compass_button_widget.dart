@@ -30,12 +30,11 @@ class CompassButtonWidget extends StatelessWidget {
       navigationStatus = event;
     });
 
-    final mapRotateion =
+    final mapRotateionStream =
         Stream<double>.periodic(const Duration(seconds: 1), (_) {
       if (oldMapRotation != mapController.rotation) {
         if (navigationStatus == NavigationStatus.northUp) {
           oldMapRotation = 0;
-          mapController.rotate(0);
         } else {
           oldMapRotation = mapController.rotation;
         }
@@ -60,7 +59,6 @@ class CompassButtonWidget extends StatelessWidget {
                     default:
                       break;
                   }
-                  mapController.rotate(0);
                 },
                 backgroundColor: backgroundColor,
                 foregroundColor: foregroundColor,
@@ -82,7 +80,7 @@ class CompassButtonWidget extends StatelessWidget {
             return Container();
           }
         },
-        stream: mapRotateion,
+        stream: mapRotateionStream,
       );
     } else {
       return Container();
