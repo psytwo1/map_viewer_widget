@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:map_viewer_widget/compass_button_display.dart';
+import 'package:map_viewer_widget/map_rotation_observer.dart';
 
 import 'navigation_status.dart';
 import 'navigation_status_stream_controller.dart';
@@ -24,12 +25,12 @@ class CompassButtonWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     NavigationStatus navigationStatus = NavigationStatus.none;
-    double oldMapRotation = 0;
 
     NavigationStatatusStreamController.stream.listen((event) {
       navigationStatus = event;
     });
 
+    double oldMapRotation = 0;
     final mapRotateionStream =
         Stream<double>.periodic(const Duration(seconds: 1), (_) {
       if (oldMapRotation != mapController.rotation) {
@@ -39,8 +40,11 @@ class CompassButtonWidget extends StatelessWidget {
           oldMapRotation = mapController.rotation;
         }
       }
+      MapRotationObserver(mapController: mapController).testFunc();
+      print(MapRotationObserver(mapController: mapController).testValue);
       return oldMapRotation;
     });
+    // MapRotationObserver(mapController: mapController).mapRotateionStream;
 
     if (compassButtonDisplay != CompassButtonDisplay.none) {
       return StreamBuilder(

@@ -9,6 +9,7 @@ import 'package:geolocator_platform_interface/geolocator_platform_interface.dart
 import 'package:map_viewer_widget/center_on_location_update_stream_controller.dart';
 import 'package:map_viewer_widget/compass_button_display.dart';
 import 'package:map_viewer_widget/map_options_ext.dart';
+import 'package:map_viewer_widget/map_rotation_observer.dart';
 import 'package:map_viewer_widget/navigation_status_stream_controller.dart';
 import 'package:map_viewer_widget/turn_on_heading_update_stream_controller.dart';
 import 'package:stream_transform/stream_transform.dart';
@@ -74,6 +75,14 @@ class MapViewerWidget extends StatelessWidget {
         _mapController.rotate(0);
       }
     });
+
+    // MapRotationObserver(mapController: _mapController)
+    //     .mapRotateionStream!
+    //     .listen((event) {
+    //   if (navigationStatus != NavigationStatus.headUp) {
+    //     _mapController.rotate(0);
+    //   }
+    // });
 
     MapOptions mapOptions = options.copyWith(
         onPositionChanged: options.onPositionChanged ??
