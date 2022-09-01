@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:example/osm_bright_ja_style.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:map_viewer_widget/map_viewer_widget.dart';
+import 'package:map_viewer_widget/navigation_status.dart';
+import 'package:map_viewer_widget/navigation_status_stream_controller.dart';
 import 'package:vector_map_tiles/vector_map_tiles.dart';
-import 'package:vector_tile_renderer/src/themes/theme_reader.dart';
+import 'package:vector_tile_renderer/vector_tile_renderer.dart';
 
 void main() {
   runApp(const MyApp());
@@ -17,7 +21,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'MapViewer Example',
+      title: 'MapViewerWidget Example',
       theme: ThemeData(
         // This is the theme of your application.
         //
@@ -30,68 +34,84 @@ class MyApp extends StatelessWidget {
         // is not restarted.
         primarySwatch: Colors.blue,
       ),
-      home: const MyHomePage(title: 'MapViewer Example'),
+      home: const MyHomePage(title: 'MapViewerWidget Example'),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
+class MyHomePage extends StatelessWidget {
   const MyHomePage({Key? key, required this.title}) : super(key: key);
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
   final String title;
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
+    final StreamController<NavigationStatus> sc =
+        NavigationStatatusStreamController.streamController;
     return Scaffold(
-        appBar: AppBar(
-          // Here we take the value from the MyHomePage object that was created by
-          // the App.build method, and use it to set our appbar title.
-          title: Text(widget.title),
-        ),
-        body: SafeArea(
-          child: MapViewerWidget(
-              options: MapOptions(
-                center: LatLng(39.640278, 141.946572),
-                zoom: 8,
-                maxZoom: 14,
-                plugins: [VectorMapTilesPlugin()],
-                // onPositionChanged: (MapPosition position, bool hasGesture) {
-                //   if (hasGesture) {
-                //     setState(() {
-                //       _setNavigationState(NavigationState.none);
-                //     });
-                //   }
-                // }
+      appBar: AppBar(
+        // Here we take the value from the MyHomePage object that was created by
+        // the App.build method, and use it to set our appbar title.
+        title: Text(title),
+      ),
+      body: SafeArea(
+          child: Stack(children: [
+        MapViewerWidget(
+            options: MapOptions(
+              center: LatLng(39.640278, 141.946572),
+              zoom: 14,
+              maxZoom: 14,
+              plugins: [VectorMapTilesPlugin()],
+            ),
+            children: [
+              VectorTileLayerWidget(
+                  options: VectorTileLayerOptions(
+                      theme: _mapTheme(context),
+                      tileProviders: TileProviders({
+                        'openmaptiles': _cachingTileProvider(_urlTemplate())
+                      })))
+            ] // Specify the visible layer as children
+            ),
+        Positioned(
+            right: 20,
+            bottom: 120,
+            child: FloatingActionButton(
+              child: StreamBuilder(
+                builder: (BuildContext context,
+                    AsyncSnapshot<NavigationStatus> snapShot) {
+                  String text = "none";
+                  NavigationStatus navigationStatus = NavigationStatus.northUp;
+                  if (snapShot.hasData) {
+                    navigationStatus =
+                        snapShot.data ?? NavigationStatus.northUp;
+                  }
+                  switch (navigationStatus) {
+                    case NavigationStatus.headUp:
+                      text = "headUp";
+                      break;
+                    case NavigationStatus.northUp:
+                      text = "northUp";
+                      break;
+                    case NavigationStatus.none:
+                    default:
+                      text = "none";
+                      break;
+                  }
+
+                  return Text(
+                    text,
+                    style: const TextStyle(
+                      fontSize: 10,
+                    ),
+                  );
+                },
+                stream: NavigationStatatusStreamController.stream,
               ),
-              children: [
-                VectorTileLayerWidget(
-                    options: VectorTileLayerOptions(
-                        theme: _mapTheme(context),
-                        tileProviders: TileProviders({
-                          'openmaptiles': _cachingTileProvider(_urlTemplate())
-                        })))
-              ]), // This trailing comma makes auto-formatting nicer for build methods.
-        ));
+              onPressed: () {
+                sc.sink.add(NavigationStatus.northUp);
+              },
+            )) // When adding custom buttons
+      ])),
+    );
   }
 
   _mapTheme(BuildContext context) {
@@ -109,7 +129,7 @@ class _MyHomePageState extends State<MyHomePage> {
             // this is the maximum zoom of the provider, not the
             // maximum of the map. vector tiles are rendered
             // to larger sizes to support higher zoom levels
-            maximumZoom: 17),
+            maximumZoom: 14),
         maxSizeBytes: 1024 * 1024 * 2);
   }
 

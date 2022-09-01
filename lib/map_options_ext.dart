@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:positioned_tap_detector_2/positioned_tap_detector_2.dart';
 
 extension MapOptionsExt on MapOptions {
+  /// If you give an argument, it will overwrite the value of the member and copy it.
   MapOptions copyWith({
     bool? allowPanningOnScrollingParent,
     Crs? crs,

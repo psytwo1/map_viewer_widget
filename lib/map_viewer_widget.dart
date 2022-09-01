@@ -3,42 +3,61 @@ library map_viewer_widget;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_compass/flutter_compass.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:geolocator_platform_interface/geolocator_platform_interface.dart';
+import 'package:map_viewer_widget/center_on_location_update_stream_controller.dart';
+import 'package:map_viewer_widget/compass_button_display.dart';
 import 'package:map_viewer_widget/map_options_ext.dart';
+import 'package:map_viewer_widget/navigation_status_stream_controller.dart';
+import 'package:map_viewer_widget/turn_on_heading_update_stream_controller.dart';
+import 'package:stream_transform/stream_transform.dart';
 
+import 'compass_button_widget.dart';
 import 'icon_with_background.dart';
-import 'navigation_state.dart';
+import 'navigation_status.dart';
 
-class MapViewerWidget extends StatefulWidget {
-  const MapViewerWidget({
+/// MapViewerWidget is map viewer widget
+class MapViewerWidget extends StatelessWidget {
+  /// A set of layers' widgets to used to create the layers on the map.
+  final List<Widget> children;
+
+  /// [MapOptions] to create a [MapState] with.
+  ///
+  /// This property must not be null.
+  final MapOptions options;
+
+  /// Visibility of navigation buttons
+  final bool navigationButtonVisible;
+
+  /// Compass button display mode
+  /// Default value is [auto]
+  /// See [CompassButtonDisplay] for details
+  final CompassButtonDisplay compassButtonDisplay;
+
+  /// Default Center On Location Update
+  final CenterOnLocationUpdate defaultCenterOnLocationUpdate;
+
+  /// Default Turn On Heading Update
+  final TurnOnHeadingUpdate defaultTurnOnHeadingUpdate;
+
+  /// Default Navigation Status
+  /// See [NavigationStatus] for details
+  final NavigationStatus defaultNavigationStatus;
+
+  /// A constructor of `MapViewerWidget` class.
+  MapViewerWidget({
     Key? key,
     required this.children,
     required this.options,
+    this.navigationButtonVisible = true,
+    this.compassButtonDisplay = CompassButtonDisplay.auto,
+    this.defaultCenterOnLocationUpdate = CenterOnLocationUpdate.always,
+    this.defaultTurnOnHeadingUpdate = TurnOnHeadingUpdate.never,
+    this.defaultNavigationStatus = NavigationStatus.northUp,
   }) : super(key: key);
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final List<Widget> children;
-  final MapOptions options;
-  @override
-  State<MapViewerWidget> createState() => _MapViewerWidgetState();
-}
-
-class _MapViewerWidgetState extends State<MapViewerWidget> {
   final MapController _mapController = MapController();
-  late NavigationState _navigationState;
-  late CenterOnLocationUpdate _centerOnLocationUpdate;
-  late IconWithBackground _currentNavigationButton = nearMeWhite;
   final IconWithBackground nearMeWhite = const IconWithBackground(
       bgColor: Colors.blue,
       icon: Icon(
@@ -53,118 +72,182 @@ class _MapViewerWidgetState extends State<MapViewerWidget> {
       ));
   final IconWithBackground navigationWhite = const IconWithBackground(
       bgColor: Colors.blue, icon: Icon(Icons.navigation, color: Colors.white));
-  late StreamController<double> _centerCurrentLocationStreamController;
-  late MapOptions? _mapOptions;
-
-  @override
-  void initState() {
-    super.initState();
-    _centerOnLocationUpdate = CenterOnLocationUpdate.always;
-    _centerCurrentLocationStreamController = StreamController<double>();
-    _setNavigationState(NavigationState.northUp, isInit: true);
-    FlutterCompass.events!.listen((data) {
-      if (_navigationState == NavigationState.headUp) {
-        _mapController.rotate(-data.heading!);
-      }
-    });
-    _mapOptions = widget.options.copyWith(
-        onPositionChanged: widget.options.onPositionChanged ??
-            (MapPosition position, bool hasGesture) {
-              if (hasGesture) {
-                setState(() {
-                  _setNavigationState(NavigationState.none);
-                });
-              }
-            });
-  }
+  final StreamController<double> _centerCurrentLocationStreamController =
+      StreamController<double>();
+  final StreamController<void> _turnHeadingUpLocationStreamController =
+      StreamController<void>();
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Stack(children: [
-      FlutterMap(
-        mapController: _mapController,
-        options: _mapOptions!,
-        children: widget.children.followedBy([
-          FutureBuilder(
-            builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
-              if (snapshot.hasData && snapshot.data!) {
-                return LocationMarkerLayerWidget(
-                    plugin: LocationMarkerPlugin(
-                      centerCurrentLocationStream:
-                          _centerCurrentLocationStreamController.stream,
-                      centerOnLocationUpdate: _centerOnLocationUpdate,
-                    ),
-                    options: LocationMarkerLayerOptions(
-                      marker: const DefaultLocationMarker(),
-                    ));
-              } else {
-                return Container();
-              }
-            },
-            future: _isPermitted(),
-          ),
-        ]).toList(),
-      ),
-      // FutureBuilder(
-      //   builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
-      //     if (snapshot.hasData && snapshot.data!) {
-      // return
-      Positioned(
-        right: 20,
-        bottom: 20,
-        child: FloatingActionButton(
-          onPressed: () async {
-            // Automatically center the location marker on the map when location updated until user interact with the map.
-            setState(() {
-              if (_navigationState == NavigationState.northUp) {
-                _setNavigationState(NavigationState.headUp);
-              } else {
-                _setNavigationState(NavigationState.northUp);
+    NavigationStatus navigationStatus = defaultNavigationStatus;
+
+    NavigationStatatusStreamController.stream.listen(
+      (event) {
+        navigationStatus = event;
+        _setNavigationStatus(event);
+      },
+    );
+
+    TurnOnHeadingUpdateStreamController.stream.listen((event) {
+      if (event == TurnOnHeadingUpdate.never &&
+          navigationStatus != NavigationStatus.headUp) {
+        // _mapController.rotate(0);
+      }
+    });
+
+    // MapRotationObserver(mapController: _mapController)
+    //     .mapRotateionStream!
+    //     .listen((event) {
+    //   if (navigationStatus != NavigationStatus.headUp) {
+    //     _mapController.rotate(0);
+    //   }
+    // });
+
+    MapOptions mapOptions = options.copyWith(
+        onPositionChanged: options.onPositionChanged ??
+            (MapPosition position, bool hasGesture) {
+              if (hasGesture && navigationStatus != NavigationStatus.none) {
+                NavigationStatatusStreamController.streamController.sink
+                    .add(NavigationStatus.none);
               }
             });
-            // Center the location marker on the map and zoom the map to level 18.
-            // _centerCurrentLocationStreamController.add(17);
-          },
-          backgroundColor: _currentNavigationButton.bgColor,
-          child: _currentNavigationButton.icon,
+    // _setNavigationStatus(navigationStatus, isInit: true);
+    NavigationStatatusStreamController.streamController.sink
+        .add(navigationStatus);
+
+    return Stack(
+      children: [
+        FlutterMap(
+          mapController: _mapController,
+          options: mapOptions,
+          children: children.followedBy([
+            FutureBuilder(
+              builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
+                if (snapshot.hasData && snapshot.data!) {
+                  return StreamBuilder(
+                    builder: (BuildContext context,
+                        AsyncSnapshot<List<Object>> snapshot) {
+                      var centerOnLocationUpdate =
+                          defaultCenterOnLocationUpdate;
+                      var turnOnHeadingUpdate = defaultTurnOnHeadingUpdate;
+                      if (snapshot.hasData) {
+                        centerOnLocationUpdate =
+                            snapshot.data![0] as CenterOnLocationUpdate;
+                        turnOnHeadingUpdate =
+                            snapshot.data![1] as TurnOnHeadingUpdate;
+                      }
+                      return LocationMarkerLayerWidget(
+                        plugin: LocationMarkerPlugin(
+                          centerCurrentLocationStream:
+                              _centerCurrentLocationStreamController.stream,
+                          centerOnLocationUpdate: centerOnLocationUpdate,
+                          turnOnHeadingUpdate: turnOnHeadingUpdate,
+                          turnHeadingUpLocationStream:
+                              _turnHeadingUpLocationStreamController.stream,
+                        ),
+                        options: LocationMarkerLayerOptions(
+                          marker: const DefaultLocationMarker(),
+                        ),
+                      );
+                    },
+                    stream: combineLatest([
+                      CenterOnLocationUpdateStreamController.stream,
+                      TurnOnHeadingUpdateStreamController.stream
+                    ]),
+                  );
+                } else {
+                  return Container();
+                }
+              },
+              future: _isPermitted(),
+            ),
+          ]).toList(),
         ),
-      )
-      // ;
-      //     } else {
-      //       return Container();
-      //     }
-      //   },
-      //   future: _isPermitted(),
-      // )
-    ]);
+        if (navigationButtonVisible)
+          Positioned(
+            right: 20,
+            bottom: 20,
+            child: StreamBuilder(
+              builder: (BuildContext context,
+                  AsyncSnapshot<NavigationStatus> snapshot) {
+                IconWithBackground iconBg = nearMeBlue;
+                // navigationStatus = defaultNavigationStatus;
+                if (snapshot.hasData) {
+                  navigationStatus = snapshot.data ?? defaultNavigationStatus;
+                }
+                switch (navigationStatus) {
+                  case NavigationStatus.northUp:
+                    iconBg = nearMeWhite;
+                    break;
+                  case NavigationStatus.headUp:
+                    iconBg = navigationWhite;
+                    break;
+                  case NavigationStatus.none:
+                  default:
+                    iconBg = nearMeBlue;
+                    break;
+                }
+
+                return FloatingActionButton(
+                  onPressed: () {
+                    navigationButtonAction(navigationStatus);
+                  },
+                  backgroundColor: iconBg.bgColor,
+                  child: iconBg.icon,
+                );
+              },
+              stream: NavigationStatatusStreamController.stream,
+            ),
+          ),
+        Positioned(
+          right: 20,
+          top: 20,
+          child: CompassButtonWidget(
+            mapController: _mapController,
+          ),
+        ),
+      ],
+    );
   }
 
-  void _setNavigationState(NavigationState state, {bool isInit = false}) {
-    _navigationState = state;
-    switch (_navigationState) {
-      case NavigationState.northUp:
-        _centerOnLocationUpdate = CenterOnLocationUpdate.always;
-        _currentNavigationButton = nearMeWhite;
+  void navigationButtonAction(NavigationStatus navigationStatus) {
+    if (navigationStatus == NavigationStatus.northUp) {
+      NavigationStatatusStreamController.streamController.sink
+          .add(NavigationStatus.headUp);
+    } else {
+      NavigationStatatusStreamController.streamController.sink
+          .add(NavigationStatus.northUp);
+    }
+  }
+
+  void _setNavigationStatus(NavigationStatus status, {bool isInit = false}) {
+    switch (status) {
+      case NavigationStatus.northUp:
+        CenterOnLocationUpdateStreamController.streamController.sink
+            .add(CenterOnLocationUpdate.always);
+        TurnOnHeadingUpdateStreamController.streamController.sink
+            .add(TurnOnHeadingUpdate.never);
         _centerCurrentLocationStreamController.add(17);
         if (!isInit) {
           _mapController.rotate(0);
         }
+        break;
 
-        break;
-      case NavigationState.headUp:
-        _centerOnLocationUpdate = CenterOnLocationUpdate.always;
-        _currentNavigationButton = navigationWhite;
+      case NavigationStatus.headUp:
+        CenterOnLocationUpdateStreamController.streamController.sink
+            .add(CenterOnLocationUpdate.always);
+        TurnOnHeadingUpdateStreamController.streamController.sink
+            .add(TurnOnHeadingUpdate.always);
         _centerCurrentLocationStreamController.add(17);
+        _turnHeadingUpLocationStreamController.add(null);
         break;
+
+      case NavigationStatus.none:
       default:
-        _centerOnLocationUpdate = CenterOnLocationUpdate.never;
-        _currentNavigationButton = nearMeBlue;
+        CenterOnLocationUpdateStreamController.streamController.sink
+            .add(CenterOnLocationUpdate.never);
+        TurnOnHeadingUpdateStreamController.streamController.sink
+            .add(TurnOnHeadingUpdate.never);
     }
   }
 
@@ -177,5 +260,13 @@ class _MapViewerWidgetState extends State<MapViewerWidget> {
     }
     return parmission == LocationPermission.always ||
         parmission == LocationPermission.whileInUse;
+  }
+
+  Stream<List<Object>> combineLatest(Iterable<Stream> streams) {
+    final Stream<Object> first = streams.first.cast<Object>();
+    final List<Stream<Object>> others = [
+      ...streams.skip(1).cast<Stream<Object>>()
+    ];
+    return first.combineLatestAll(others);
   }
 }

@@ -38,6 +38,8 @@ dependencies:
   vector_map_tiles: ^2.1.0
   latlong2: ^0.8.1
   vector_mbtiles: ^0.0.4
+  flutter_map: ^1.1.1
+  vector_tile_renderer: ^2.5.0
 
 dev_dependencies:
   flutter_test:

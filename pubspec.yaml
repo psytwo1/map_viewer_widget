@@ -1,7 +1,7 @@
 name: map_viewer_widget
-description: A new Flutter package project.
+description: MapViewerWidget is a FlutterMap display widget. It will be the base of the map application.
 version: 0.0.1
-homepage:
+repository: https://github.com/psytwo1/map_viewer_widget.git
 
 environment:
   sdk: ">=2.17.3 <3.0.0"
@@ -16,6 +16,8 @@ dependencies:
   geolocator_platform_interface: ^4.0.5
   latlong2: ^0.8.1
   positioned_tap_detector_2: ^1.0.4
+  state_notifier: ^0.7.2+1
+  stream_transform: ^2.0.0
   vector_map_tiles: ^2.1.0
 
 dev_dependencies:
