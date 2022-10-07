@@ -37,10 +37,16 @@ class MapViewerWidget extends StatelessWidget {
     this.defaultTurnOnHeadingUpdate = TurnOnHeadingUpdate.never,
     this.defaultNavigationStatus = NavigationStatus.northUp,
     this.mapController,
+    this.nonRotatedChildren = const [],
   });
 
   /// A set of layers' widgets to used to create the layers on the map.
   final List<Widget> children;
+
+  /// These layers won't be rotated.
+  ///
+  /// These layers will render above layers
+  final List<Widget> nonRotatedChildren;
 
   /// [MapOptions] to create a MapState with.
   ///
@@ -91,10 +97,16 @@ class MapViewerWidgetBody extends StatelessWidget {
     this.navigationButtonVisible = true,
     this.compassButtonDisplay = CompassButtonDisplay.auto,
     this.mapController,
+    this.nonRotatedChildren = const [],
   });
 
   /// A set of layers' widgets to used to create the layers on the map.
   final List<Widget> children;
+
+  /// These layers won't be rotated.
+  ///
+  /// These layers will render above layers
+  final List<Widget> nonRotatedChildren;
 
   /// [MapOptions] to create a MapState with.
   ///
@@ -157,6 +169,7 @@ class MapViewerWidgetBody extends StatelessWidget {
                       }
                     },
               ),
+              nonRotatedChildren: nonRotatedChildren,
               children: children.followedBy([
                 FutureBuilder(
                   builder:
@@ -164,26 +177,23 @@ class MapViewerWidgetBody extends StatelessWidget {
                     if (snapshot.hasData) {
                       return Consumer(
                         builder: (context, ref, child) {
-                          return LocationMarkerLayerWidget(
-                            plugin: LocationMarkerPlugin(
-                              centerCurrentLocationStream: ref
-                                  .watch(
-                                    mapViewerStateNotiferProvider.notifier,
-                                  )
-                                  .centerCurrentLocationStreamController
-                                  .stream,
-                              centerOnLocationUpdate: ref
-                                  .watch(mapViewerStateNotiferProvider)
-                                  .centerOnLocationUpdate,
-                              turnOnHeadingUpdate: ref
-                                  .watch(mapViewerStateNotiferProvider)
-                                  .turnOnHeadingUpdate,
-                              turnHeadingUpLocationStream: ref
-                                  .watch(mapViewerStateNotiferProvider.notifier)
-                                  .turnHeadingUpLocationStreamController
-                                  .stream,
-                            ),
-                            options: LocationMarkerLayerOptions(),
+                          return CurrentLocationLayer(
+                            centerCurrentLocationStream: ref
+                                .watch(
+                                  mapViewerStateNotiferProvider.notifier,
+                                )
+                                .centerCurrentLocationStreamController
+                                .stream,
+                            centerOnLocationUpdate: ref
+                                .watch(mapViewerStateNotiferProvider)
+                                .centerOnLocationUpdate,
+                            turnOnHeadingUpdate: ref
+                                .watch(mapViewerStateNotiferProvider)
+                                .turnOnHeadingUpdate,
+                            turnHeadingUpLocationStream: ref
+                                .watch(mapViewerStateNotiferProvider.notifier)
+                                .turnHeadingUpLocationStreamController
+                                .stream,
                           );
                         },
                       );

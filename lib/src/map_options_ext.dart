@@ -32,7 +32,6 @@ extension MapOptionsExt on MapOptions {
     void Function(TapPosition, LatLng)? onLongPress,
     void Function(MapPosition, bool)? onPositionChanged,
     void Function(MapController)? onMapCreated,
-    List<MapPlugin>? plugins,
     bool? slideOnBoundaries,
     bool? adaptiveBoundaries,
     Size? screenSize,
@@ -42,8 +41,6 @@ extension MapOptionsExt on MapOptions {
     LatLngBounds? maxBounds,
   }) {
     return MapOptions(
-      allowPanningOnScrollingParent:
-          allowPanningOnScrollingParent ?? this.allowPanningOnScrollingParent,
       crs: crs ?? this.crs,
       center: center ?? this.center,
       bounds: bounds ?? this.bounds,
@@ -64,16 +61,12 @@ extension MapOptionsExt on MapOptions {
       minZoom: minZoom ?? this.minZoom,
       maxZoom: maxZoom ?? this.maxZoom,
       interactiveFlags: interactiveFlags ?? this.interactiveFlags,
-      allowPanning: allowPanning ?? this.allowPanning,
       onTap: onTap ?? this.onTap,
       onLongPress: onLongPress ?? this.onLongPress,
       onPositionChanged: onPositionChanged ?? this.onPositionChanged,
-      onMapCreated: onMapCreated ?? this.onMapCreated,
-      plugins: plugins ?? this.plugins,
       slideOnBoundaries: slideOnBoundaries ?? this.slideOnBoundaries,
       adaptiveBoundaries: adaptiveBoundaries ?? this.adaptiveBoundaries,
       screenSize: screenSize ?? this.screenSize,
-      controller: controller ?? this.controller,
       swPanBoundary: swPanBoundary ?? this.swPanBoundary,
       nePanBoundary: nePanBoundary ?? this.nePanBoundary,
       maxBounds: maxBounds ?? this.maxBounds,

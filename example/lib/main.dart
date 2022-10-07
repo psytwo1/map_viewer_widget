@@ -8,6 +8,8 @@ import 'package:vector_map_tiles/vector_map_tiles.dart';
 import 'package:vector_tile_renderer/vector_tile_renderer.dart';
 import 'package:vector_tile_renderer/vector_tile_renderer.dart' as vtr;
 
+// import 'api_key.dart';
+
 void main() {
   runApp(
     const ProviderScope(
@@ -62,19 +64,16 @@ class MyHomePage extends StatelessWidget {
                 center: LatLng(39.640278, 141.946572),
                 zoom: 14,
                 maxZoom: 14,
-                plugins: [VectorMapTilesPlugin()],
               ),
-              // Specify the visible layer as children
               mapController: mapController,
+              // Specify the visible layer as children
               children: [
-                VectorTileLayerWidget(
-                  options: VectorTileLayerOptions(
-                    theme: _mapTheme(context),
-                    tileProviders: TileProviders(
-                      {'openmaptiles': _cachingTileProvider(_urlTemplate())},
-                    ),
+                VectorTileLayer(
+                  theme: _mapTheme(context),
+                  tileProviders: TileProviders(
+                    {'openmaptiles': _cachingTileProvider(_urlTemplate())},
                   ),
-                )
+                ),
               ],
             ),
             // When adding custom buttons
