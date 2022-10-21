@@ -24,19 +24,20 @@ class MapViewerStateNotifer extends StateNotifier<MapViewerState> {
   void setNavigationStatus({
     required NavigationStatus navigationStatus,
     MapController? mapController,
+    double zoom = 17,
   }) {
     state = MapViewerState(navigationStatus);
 
     switch (navigationStatus) {
       case NavigationStatus.northUp:
-        centerCurrentLocationStreamController.sink.add(17);
+        centerCurrentLocationStreamController.sink.add(zoom);
         if (mapController != null) {
           mapController.rotate(0);
         }
         break;
 
       case NavigationStatus.headUp:
-        centerCurrentLocationStreamController.sink.add(17);
+        centerCurrentLocationStreamController.sink.add(zoom);
         turnHeadingUpLocationStreamController.sink.add(null);
         break;
 

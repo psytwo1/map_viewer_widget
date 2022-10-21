@@ -62,8 +62,8 @@ class MyHomePage extends StatelessWidget {
             MapViewerWidget(
               options: MapOptions(
                 center: LatLng(39.640278, 141.946572),
-                zoom: 14,
-                maxZoom: 14,
+                zoom: 18,
+                maxZoom: 18,
               ),
               mapController: mapController,
               // Specify the visible layer as children
