@@ -1,3 +1,7 @@
+## 0.0.5
+
+* Added argument that can specify zoom during navigation
+
 ## 0.0.4
 
 * Upgrade to flutter map 3.0.0

@@ -38,6 +38,7 @@ class MapViewerWidget extends StatelessWidget {
     this.defaultNavigationStatus = NavigationStatus.northUp,
     this.mapController,
     this.nonRotatedChildren = const [],
+    this.navigationZoom = 17,
   });
 
   /// A set of layers' widgets to used to create the layers on the map.
@@ -74,6 +75,9 @@ class MapViewerWidget extends StatelessWidget {
   /// Specified when using [MapController] from outside the class
   final MapController? mapController;
 
+  /// Specify navigation zoom
+  final double navigationZoom;
+
   @override
   Widget build(BuildContext context) {
     return ProviderScope(
@@ -98,6 +102,7 @@ class MapViewerWidgetBody extends StatelessWidget {
     this.compassButtonDisplay = CompassButtonDisplay.auto,
     this.mapController,
     this.nonRotatedChildren = const [],
+    this.navigationZoom = 17,
   });
 
   /// A set of layers' widgets to used to create the layers on the map.
@@ -124,6 +129,9 @@ class MapViewerWidgetBody extends StatelessWidget {
   /// Specified when using [MapController] from outside the class
   final MapController? mapController;
   late final MapController _mapController = mapController ?? MapController();
+
+  /// Specify navigation zoom
+  final double navigationZoom;
 
   final IconWithBackground nearMeWhite = const IconWithBackground(
     bgColor: Colors.blue,
@@ -165,6 +173,7 @@ class MapViewerWidgetBody extends StatelessWidget {
                             .setNavigationStatus(
                               navigationStatus: NavigationStatus.none,
                               mapController: _mapController,
+                              zoom: navigationZoom,
                             );
                       }
                     },
@@ -224,6 +233,7 @@ class MapViewerWidgetBody extends StatelessWidget {
                           .setNavigationStatus(
                             navigationStatus: NavigationStatus.headUp,
                             mapController: _mapController,
+                            zoom: navigationZoom,
                           );
                     } else {
                       ref
@@ -231,6 +241,7 @@ class MapViewerWidgetBody extends StatelessWidget {
                           .setNavigationStatus(
                             navigationStatus: NavigationStatus.northUp,
                             mapController: _mapController,
+                            zoom: navigationZoom,
                           );
                     }
                   },
