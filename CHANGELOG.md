@@ -1,3 +1,7 @@
+## 0.0.6
+
+* Fixed to pass static analysis
+
 ## 0.0.5
 
 * Added argument that can specify zoom during navigation

@@ -33,7 +33,7 @@ class MapViewerWidget extends StatelessWidget {
     required this.options,
     this.navigationButtonVisible = true,
     this.compassButtonDisplay = CompassButtonDisplay.auto,
-    this.defaultCenterOnLocationUpdate = CenterOnLocationUpdate.always,
+    this.defaultCenterOnLocationUpdate = FollowOnLocationUpdate.always,
     this.defaultTurnOnHeadingUpdate = TurnOnHeadingUpdate.never,
     this.defaultNavigationStatus = NavigationStatus.northUp,
     this.mapController,
@@ -63,7 +63,7 @@ class MapViewerWidget extends StatelessWidget {
   final CompassButtonDisplay compassButtonDisplay;
 
   /// Default Center On Location Update
-  final CenterOnLocationUpdate defaultCenterOnLocationUpdate;
+  final FollowOnLocationUpdate defaultCenterOnLocationUpdate;
 
   /// Default Turn On Heading Update
   final TurnOnHeadingUpdate defaultTurnOnHeadingUpdate;
@@ -187,13 +187,13 @@ class MapViewerWidgetBody extends StatelessWidget {
                       return Consumer(
                         builder: (context, ref, child) {
                           return CurrentLocationLayer(
-                            centerCurrentLocationStream: ref
+                            followCurrentLocationStream: ref
                                 .watch(
                                   mapViewerStateNotiferProvider.notifier,
                                 )
                                 .centerCurrentLocationStreamController
                                 .stream,
-                            centerOnLocationUpdate: ref
+                            followOnLocationUpdate: ref
                                 .watch(mapViewerStateNotiferProvider)
                                 .centerOnLocationUpdate,
                             turnOnHeadingUpdate: ref

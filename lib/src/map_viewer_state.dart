@@ -6,22 +6,22 @@ class MapViewerState {
   MapViewerState(this.navigationStatus) {
     switch (navigationStatus) {
       case NavigationStatus.northUp:
-        centerOnLocationUpdate = CenterOnLocationUpdate.always;
+        centerOnLocationUpdate = FollowOnLocationUpdate.always;
         turnOnHeadingUpdate = TurnOnHeadingUpdate.never;
         break;
 
       case NavigationStatus.headUp:
-        centerOnLocationUpdate = CenterOnLocationUpdate.always;
+        centerOnLocationUpdate = FollowOnLocationUpdate.always;
         turnOnHeadingUpdate = TurnOnHeadingUpdate.always;
         break;
 
       case NavigationStatus.none:
-        centerOnLocationUpdate = CenterOnLocationUpdate.never;
+        centerOnLocationUpdate = FollowOnLocationUpdate.never;
         turnOnHeadingUpdate = TurnOnHeadingUpdate.never;
         break;
     }
   }
   final NavigationStatus navigationStatus;
-  late final CenterOnLocationUpdate centerOnLocationUpdate;
+  late final FollowOnLocationUpdate centerOnLocationUpdate;
   late final TurnOnHeadingUpdate turnOnHeadingUpdate;
 }

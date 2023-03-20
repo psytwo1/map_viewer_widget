@@ -39,17 +39,14 @@ class CompassButtonWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return ProviderScope(
       overrides: [
-        mapRotationStreamProvider.overrideWithProvider(
-          StreamProvider.autoDispose<double>(
-            (ref) {
-              final mapRotationStreamController = MapRotationStreamController(
-                mapController: mapController,
-              );
-              ref.onDispose(mapRotationStreamController.dispose);
-              return mapRotationStreamController
-                  .rotationStreamController.stream;
-            },
-          ),
+        mapRotationStreamProvider.overrideWith(
+          (ref) {
+            final mapRotationStreamController = MapRotationStreamController(
+              mapController: mapController,
+            );
+            ref.onDispose(mapRotationStreamController.dispose);
+            return mapRotationStreamController.rotationStreamController.stream;
+          },
         ),
       ],
       child: CompassButtonWidgetBody(
